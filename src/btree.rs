@@ -1,12 +1,14 @@
-use super::*;
+use neon::prelude::*;
 use std::{
     collections::BTreeMap,
     cell::RefCell,
     ops::Bound::{Included, Unbounded},
+    time::{Duration, Instant},
 };
+use rand::Rng;
 
 
-type BoxedTestStruct = JsBox<RefCell<MyBTree>>;
+type BoxedMyBTree = JsBox<RefCell<MyBTree>>;
 
 pub struct MyBTree {
     map: BTreeMap<i64, i64>,
@@ -58,32 +60,68 @@ impl MyBTree {
     }
 }
 
-pub fn btree_new(mut cx: FunctionContext) -> JsResult<BoxedTestStruct> {
-    let new_test_struct = RefCell::new(MyBTree::new());
-    Ok(cx.boxed(new_test_struct))
+pub fn btree_new(mut cx: FunctionContext) -> JsResult<BoxedMyBTree> {
+    let new_btree = RefCell::new(MyBTree::new());
+    Ok(cx.boxed(new_btree))
+}
+
+pub fn btree_new_random(mut cx: FunctionContext) -> JsResult<BoxedMyBTree> {
+    let btree_size = cx.argument::<JsNumber>(0)?.value(&mut cx) as i64;
+    let new_btree = RefCell::new(MyBTree::new());
+    let mut rng = rand::thread_rng();
+    for _ in 0..btree_size {
+        let random_num = rng.gen_range(0..(btree_size*10));
+        new_btree.borrow_mut().insert(random_num, random_num);
+    }
+    Ok(cx.boxed(new_btree))
 }
 
 pub fn btree_insert(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let test_struct = cx.argument::<BoxedTestStruct>(0)?;
-    let mut test_struct = test_struct.borrow_mut();
+    let btree = cx.argument::<BoxedMyBTree>(0)?;
+    let mut btree = btree.borrow_mut();
     let key = cx.argument::<JsNumber>(1)?.value(&mut cx) as i64;
     let value = cx.argument::<JsNumber>(2)?.value(&mut cx) as i64;
-    test_struct.insert(key, value);
+    btree.insert(key, value);
     Ok(cx.undefined())
 }
 
 pub fn btree_find(mut cx: FunctionContext) -> JsResult<JsNumber> {
-    let test_struct = cx.argument::<BoxedTestStruct>(0)?;
-    let test_struct = test_struct.borrow();
+    let btree = cx.argument::<BoxedMyBTree>(0)?;
+    let btree = btree.borrow();
     let key = cx.argument::<JsNumber>(1)?.value(&mut cx) as i64;
-    let value: i64 = test_struct.find(key).unwrap();
+    let value: i64 = btree.find(key).unwrap();
     Ok(cx.number(value as f64))
 }
 
 pub fn btree_remove(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let test_struct = cx.argument::<BoxedTestStruct>(0)?;
-    let mut test_struct = test_struct.borrow_mut();
+    let btree = cx.argument::<BoxedMyBTree>(0)?;
+    let mut btree = btree.borrow_mut();
     let key = cx.argument::<JsNumber>(1)?.value(&mut cx) as i64;
-    test_struct.remove(key);
+    btree.remove(key);
     Ok(cx.undefined())
+}
+
+#[test]
+fn test_btree_find() {
+    let btree_size = 1_000_000;
+    let key_range = btree_size * 10;
+    let test_num = 100_000;
+
+    let mut btree = MyBTree::new();
+    let mut rng = rand::thread_rng();
+    for _ in 0..btree_size {
+        let random_num = rng.gen_range(0..key_range);
+        btree.map.insert(random_num, random_num);
+    }
+
+    let start = Instant::now();
+    for i in 0..test_num {
+        let random_key = rng.gen_range(0..key_range);
+        let result = btree.find(random_key).unwrap();
+        // if i % 1_000 == 0 {
+        //     println!("Find result for key {}: {}", random_key, result);
+        // }
+    }
+    let duration = start.elapsed().as_millis();
+    println!("test time cost {}ms", duration);
 }
