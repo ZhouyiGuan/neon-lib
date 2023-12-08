@@ -22,18 +22,22 @@ impl MyBTree {
             map: BTreeMap::new(),
         }
     }
+
     pub fn insert(&mut self, key: i64, value: i64) {
         self.map.insert(key, value);
     }
+
     pub fn find(&self, key: i64) -> Option<i64> {
         self.map.get(&key)
             .copied()
             .or_else(|| self.find_nearest_key(&key))
     }
+
     pub fn remove(&mut self, key: i64) {
         self.map.remove(&key);
     }
-    pub fn find_nearest_key(&self, key: &i64) -> Option<i64> {
+
+    fn find_nearest_key(&self, key: &i64) -> Option<i64> {
         let mut lower = self.map.range((Unbounded, Included(key))).rev();
         let mut upper = self.map.range((Included(key), Unbounded));
 
@@ -118,9 +122,9 @@ fn test_btree_find() {
     for i in 0..test_num {
         let random_key = rng.gen_range(0..key_range);
         let result = btree.find(random_key).unwrap();
-        // if i % 1_000 == 0 {
-        //     println!("Find result for key {}: {}", random_key, result);
-        // }
+        if i % 1_000 == 0 {
+            println!("Find result for key {}: {}", random_key, result);
+        }
     }
     let duration = start.elapsed().as_millis();
     println!("test time cost {}ms", duration);

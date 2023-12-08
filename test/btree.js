@@ -18,9 +18,9 @@ function testBTree() {
     for (let i = 0; i < TEST_NUM; i++){
         let key = Math.floor(Math.random() * KEY_RANGE);
         let result = neonLib.btreeFind(tree, key);
-        /* if (i % 1_000 == 0) {
+        if (i % 1_000 == 0) {
             console.log(`Find result for key ${key}:`, result);
-        } */
+        } 
     }
     console.timeEnd("tree find cost");
 }
